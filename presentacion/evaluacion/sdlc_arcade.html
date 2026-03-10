@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDLC ARCADE</title>
+<link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0f0c29;
+  --p1:#ff6fd8;
+  --p2:#a855f7;
+  --blue:#38bdf8;
+  --green:#4ade80;
+  --yellow:#fbbf24;
+  --red:#f87171;
+  --orange:#fb923c;
+  --white:#f1f5f9;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);}
+
+/* ─── CANVAS BG ─── */
+#bgCanvas{position:fixed;inset:0;z-index:0;}
+
+/* ─── WRAPPER ─── */
+#app{position:relative;z-index:2;width:100%;height:100vh;display:flex;align-items:center;justify-content:center;}
+
+/* ─── SCREENS ─── */
+.screen{display:none;width:100%;max-width:700px;padding:20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+.screen.active{display:flex;flex-direction:column;align-items:center;}
+@keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+
+/* ─── SPLASH ─── */
+#splash{text-align:center;}
+.logo-wrap{margin-bottom:10px;}
+.logo-pixel{font-family:'Press Start 2P',monospace;font-size:clamp(18px,5vw,32px);color:#fff;
+  text-shadow:0 0 20px var(--p1),0 0 40px var(--p2),4px 4px 0 var(--p2);
+  animation:logoFloat 2s ease-in-out infinite;}
+@keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.logo-sub{font-family:'Boogaloo',cursive;font-size:clamp(22px,5vw,38px);
+  background:linear-gradient(90deg,var(--blue),var(--p1),var(--yellow));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-top:8px;letter-spacing:2px;}
+.badge{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.6);font-size:11px;font-family:'Nunito',sans-serif;
+  padding:4px 14px;border-radius:20px;margin:12px 0 24px;letter-spacing:2px;}
+
+.hearts{font-size:26px;margin-bottom:16px;letter-spacing:6px;}
+
+.big-btn{
+  background:linear-gradient(135deg,var(--p1),var(--p2));
+  border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:13px;
+  padding:16px 36px;border-radius:50px;cursor:pointer;
+  box-shadow:0 8px 30px rgba(168,85,247,.5),0 0 0 0 rgba(168,85,247,.4);
+  transition:transform .15s,box-shadow .15s;letter-spacing:1px;
+  animation:pulse 2s infinite;}
+.big-btn:hover{transform:scale(1.07);box-shadow:0 12px 40px rgba(168,85,247,.7),0 0 0 8px rgba(168,85,247,.15);}
+@keyframes pulse{0%,100%{box-shadow:0 8px 30px rgba(168,85,247,.5),0 0 0 0 rgba(168,85,247,.3)}
+  50%{box-shadow:0 8px 30px rgba(168,85,247,.5),0 0 0 12px rgba(168,85,247,.0)}}
+
+.tip{font-family:'Nunito',sans-serif;font-size:13px;color:rgba(255,255,255,.4);margin-top:16px;}
+
+/* ─── HUD ─── */
+#hud{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  display:none;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  background:rgba(15,12,41,.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+#hud.show{display:flex;}
+.hud-block{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hud-label{font-size:9px;font-family:'Press Start 2P',monospace;color:rgba(255,255,255,.4);letter-spacing:1px;}
+.hud-val{font-family:'Boogaloo',cursive;font-size:26px;color:#fff;}
+#hudScore{color:var(--yellow);}
+#hudLives{color:var(--red);font-size:22px;letter-spacing:4px;}
+#hudCombo{color:var(--p1);}
+.hud-progress{flex:1;max-width:200px;background:rgba(255,255,255,.1);height:8px;border-radius:4px;overflow:hidden;margin:0 16px;}
+.hud-progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--p1));border-radius:4px;transition:width .4s ease;}
+
+/* ─── TIMER BAR ─── */
+#timerBar{
+  position:fixed;top:64px;left:0;right:0;height:5px;z-index:10;
+  background:rgba(255,255,255,.08);display:none;
+}
+#timerBar.show{display:block;}
+#timerFill{height:100%;width:100%;border-radius:3px;transition:width .1s linear,background .5s;}
+
+/* ─── QUIZ SCREEN ─── */
+#quiz{padding-top:80px;}
+.q-mode-badge{
+  font-family:'Press Start 2P',monospace;font-size:9px;
+  padding:5px 14px;border-radius:20px;margin-bottom:14px;letter-spacing:1px;
+}
+.q-num{font-family:'Nunito',sans-serif;font-size:13px;color:rgba(255,255,255,.4);margin-bottom:10px;}
+
+.question-card{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:20px;padding:22px 24px;
+  width:100%;margin-bottom:16px;
+  font-family:'Nunito',sans-serif;font-size:clamp(15px,3vw,18px);
+  font-weight:700;color:#fff;line-height:1.5;text-align:center;
+  backdrop-filter:blur(4px);
+}
+
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;}
+@media(max-width:480px){.options-grid{grid-template-columns:1fr;}}
+
+.opt{
+  background:rgba(255,255,255,.06);
+  border:2px solid rgba(255,255,255,.12);
+  border-radius:16px;padding:14px 16px;
+  cursor:pointer;font-family:'Nunito',sans-serif;
+  font-size:14px;font-weight:700;color:#fff;
+  text-align:left;transition:all .18s;
+  display:flex;align-items:flex-start;gap:10px;line-height:1.3;
+}
+.opt:hover:not(:disabled){
+  border-color:var(--blue);background:rgba(56,189,248,.12);
+  transform:translateY(-2px) scale(1.02);
+  box-shadow:0 8px 20px rgba(56,189,248,.2);
+}
+.opt-letter{
+  min-width:28px;height:28px;border-radius:8px;
+  background:rgba(255,255,255,.12);display:flex;align-items:center;
+  justify-content:center;font-family:'Press Start 2P',monospace;font-size:9px;
+  flex-shrink:0;margin-top:1px;
+}
+.opt.correct{border-color:var(--green)!important;background:rgba(74,222,128,.15)!important;
+  animation:correctFlash .4s ease;}
+.opt.wrong{border-color:var(--red)!important;background:rgba(248,113,113,.15)!important;
+  animation:wrongShake .4s ease;}
+@keyframes correctFlash{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes wrongShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}60%{transform:translateX(8px)}}
+.opt:disabled{cursor:default;}
+
+/* ─── FEEDBACK TOAST ─── */
+#toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);
+  background:rgba(15,12,41,.95);border:2px solid var(--green);
+  border-radius:14px;padding:12px 22px;
+  font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#fff;
+  z-index:999;opacity:0;transition:all .3s;pointer-events:none;
+  text-align:center;max-width:340px;width:90%;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ─── COMBO POPUP ─── */
+#comboPop{
+  position:fixed;top:50%;left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  font-family:'Press Start 2P',monospace;font-size:clamp(20px,5vw,36px);
+  color:var(--yellow);text-shadow:0 0 20px var(--yellow),0 0 40px var(--orange);
+  z-index:900;pointer-events:none;text-align:center;
+  transition:all .15s cubic-bezier(.34,1.56,.64,1);
+}
+#comboPop.show{transform:translate(-50%,-50%) scale(1);}
+
+/* ─── ORDER GAME ─── */
+#order{padding-top:80px;}
+.order-instruction{
+  font-family:'Nunito',sans-serif;font-size:13px;
+  color:rgba(255,255,255,.5);text-align:center;margin-bottom:14px;letter-spacing:1px;
+}
+.phase-list{display:flex;flex-direction:column;gap:8px;width:100%;}
+.phase-item{
+  background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:14px 18px;
+  display:flex;align-items:center;gap:14px;
+  cursor:grab;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;
+  color:#fff;transition:all .2s;user-select:none;
+}
+.phase-item:active{cursor:grabbing;}
+.phase-item:hover{border-color:var(--p1);background:rgba(255,111,216,.08);transform:translateX(4px);}
+.phase-item.dragging-active{opacity:.3;border-style:dashed;}
+.phase-item.drag-over{border-color:var(--yellow);background:rgba(251,191,36,.08);transform:scale(1.02);}
+.phase-item.correct-order{border-color:var(--green)!important;background:rgba(74,222,128,.1)!important;}
+.phase-item.wrong-order{border-color:var(--red)!important;background:rgba(248,113,113,.1)!important;}
+.phase-num{
+  width:32px;height:32px;border-radius:10px;
+  background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;
+  font-family:'Press Start 2P',monospace;font-size:11px;color:rgba(255,255,255,.5);
+  flex-shrink:0;
+}
+.phase-icon{font-size:22px;flex-shrink:0;}
+
+.action-btn{
+  background:linear-gradient(135deg,var(--blue),var(--p2));
+  border:none;color:#fff;font-family:'Press Start 2P',monospace;font-size:10px;
+  padding:14px 28px;border-radius:50px;cursor:pointer;margin-top:16px;
+  box-shadow:0 6px 24px rgba(56,189,248,.3);transition:all .18s;letter-spacing:1px;
+}
+.action-btn:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(56,189,248,.4);}
+.action-btn.yellow{background:linear-gradient(135deg,var(--yellow),var(--orange));box-shadow:0 6px 24px rgba(251,191,36,.3);}
+.action-btn.green{background:linear-gradient(135deg,var(--green),var(--blue));box-shadow:0 6px 24px rgba(74,222,128,.3);}
+
+/* ─── MATCH GAME ─── */
+#match{padding-top:80px;}
+.match-instruction{
+  font-family:'Nunito',sans-serif;font-size:13px;
+  color:rgba(255,255,255,.5);text-align:center;margin-bottom:14px;
+}
+.match-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;}
+.match-col-label{
+  font-family:'Press Start 2P',monospace;font-size:8px;
+  color:rgba(255,255,255,.3);text-align:center;margin-bottom:8px;letter-spacing:1px;
+}
+.match-cards{display:flex;flex-direction:column;gap:8px;}
+.mcard{
+  background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:12px;cursor:pointer;
+  font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;color:#fff;
+  text-align:center;transition:all .2s;min-height:58px;
+  display:flex;align-items:center;justify-content:center;line-height:1.3;
+}
+.mcard:hover:not(.matched):not(.disabled){border-color:var(--p1);background:rgba(255,111,216,.1);transform:scale(1.03);}
+.mcard.selected{border-color:var(--yellow);background:rgba(251,191,36,.12);color:var(--yellow);
+  box-shadow:0 0 16px rgba(251,191,36,.3);}
+.mcard.matched{border-color:var(--green);background:rgba(74,222,128,.1);color:var(--green);cursor:default;
+  animation:matchPop .35s cubic-bezier(.34,1.56,.64,1);}
+@keyframes matchPop{0%{transform:scale(.9)}100%{transform:scale(1)}}
+.mcard.wrong-shake{animation:mshake .35s ease;border-color:var(--red)!important;}
+@keyframes mshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+#matchPairs{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;
+  color:rgba(255,255,255,.5);margin-top:12px;text-align:center;}
+
+/* ─── RESULTS ─── */
+#results{text-align:center;}
+.result-emoji{font-size:64px;margin-bottom:12px;animation:bounceIn .6s cubic-bezier(.34,1.56,.64,1);}
+@keyframes bounceIn{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}
+.result-title{
+  font-family:'Press Start 2P',monospace;font-size:clamp(14px,4vw,22px);
+  color:#fff;margin-bottom:8px;text-shadow:0 0 20px var(--p1);}
+.result-sub{font-family:'Nunito',sans-serif;font-size:16px;color:rgba(255,255,255,.6);margin-bottom:24px;line-height:1.5;}
+.stats-row{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;justify-content:center;}
+.stat-box{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;padding:16px 22px;min-width:110px;
+}
+.stat-num{font-family:'Boogaloo',cursive;font-size:36px;}
+.stat-lbl{font-family:'Nunito',sans-serif;font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;}
+
+/* ─── PARTICLES ─── */
+.particle{
+  position:fixed;pointer-events:none;border-radius:50%;z-index:500;
+  animation:particleFly var(--dur) ease-out forwards;
+}
+@keyframes particleFly{
+  0%{transform:translate(0,0) scale(1);opacity:1;}
+  100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0;}
+}
+
+/* ─── SCREEN FLASH ─── */
+#flash{position:fixed;inset:0;z-index:400;pointer-events:none;opacity:0;}
+
+/* ─── TRANSITION OVERLAY ─── */
+#overlay{
+  position:fixed;inset:0;z-index:300;background:var(--bg);
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+#overlay.fade-out{opacity:0;pointer-events:none;}
+#overlay.fade-in{opacity:1;pointer-events:all;}
+
+/* ─── FULL WIDTH ─── */
+.full-w{width:100%;}
+
+/* ─── SCROLLABLE GAME AREA ─── */
+.scroll-area{width:100%;overflow-y:auto;max-height:calc(100vh - 80px);padding-bottom:20px;}
+</style>
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div id="flash"></div>
+<div id="overlay"></div>
+<div id="comboPop"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-block"><span class="hud-label">VIDAS</span><span class="hud-val" id="hudLives">❤️❤️❤️</span></div>
+  <div class="hud-progress"><div class="hud-progress-fill" id="hudProgress" style="width:0%"></div></div>
+  <div class="hud-block"><span class="hud-label">COMBO</span><span class="hud-val" id="hudCombo">×1</span></div>
+  <div class="hud-block"><span class="hud-label">PUNTOS</span><span class="hud-val" id="hudScore">0</span></div>
+</div>
+
+<div id="timerBar"><div id="timerFill"></div></div>
+
+<div id="toast"></div>
+
+<div id="app">
+
+  <!-- SPLASH -->
+  <div class="screen active" id="splash">
+    <div class="logo-wrap">
+      <div class="logo-pixel">SDLC</div>
+      <div class="logo-sub">ARCADE CHALLENGE</div>
+    </div>
+    <div class="badge">CICLO DE VIDA DEL SOFTWARE</div>
+    <div class="hearts">❤️❤️❤️</div>
+    <p style="font-family:'Nunito',sans-serif;font-size:14px;color:rgba(255,255,255,.55);margin-bottom:24px;text-align:center;line-height:1.6;max-width:380px;">
+      3 rondas épicas • Quiz cronometrado • Ordenar fases • Emparejar conceptos<br>
+      <strong style="color:var(--yellow)">¡No pierdas tus 3 vidas!</strong>
+    </p>
+    <button class="big-btn" onclick="startGame()">▶ JUGAR AHORA</button>
+    <p class="tip">Tip: responde rápido para ganar más puntos ⚡</p>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="screen" id="quiz">
+    <div class="scroll-area" style="display:flex;flex-direction:column;align-items:center;">
+      <div class="q-mode-badge" id="qModeBadge" style="background:rgba(56,189,248,.15);border:1px solid var(--blue);color:var(--blue);">RONDA 1 · QUIZ</div>
+      <div class="q-num" id="qNum">Pregunta 1 de 7</div>
+      <div class="question-card" id="qText"></div>
+      <div class="options-grid" id="optsGrid"></div>
+    </div>
+  </div>
+
+  <!-- ORDER -->
+  <div class="screen" id="order">
+    <div class="scroll-area" style="display:flex;flex-direction:column;align-items:center;">
+      <div class="q-mode-badge" style="background:rgba(251,191,36,.12);border:1px solid var(--yellow);color:var(--yellow);">RONDA 2 · ORDENA LAS FASES</div>
+      <p class="order-instruction">Arrastra ↕ para poner las fases del SDLC en orden correcto</p>
+      <div class="phase-list" id="phaseList"></div>
+      <button class="action-btn yellow" onclick="checkOrder()" style="margin-top:18px;">✓ VERIFICAR ORDEN</button>
+    </div>
+  </div>
+
+  <!-- MATCH -->
+  <div class="screen" id="match">
+    <div class="scroll-area" style="display:flex;flex-direction:column;align-items:center;">
+      <div class="q-mode-badge" style="background:rgba(168,85,247,.15);border:1px solid var(--p2);color:var(--p1);">RONDA 3 · EMPAREJA</div>
+      <p class="match-instruction">Toca una FASE y luego su OBJETIVO · Sin errores = bonus</p>
+      <div class="match-cols full-w" id="matchCols"></div>
+      <div id="matchPairs">0 / 5 pares encontrados</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="results">
+    <div class="result-emoji" id="resultEmoji">🏆</div>
+    <div class="result-title" id="resultTitle">¡FELICITACIONES!</div>
+    <div class="result-sub" id="resultSub">Completaste el desafío</div>
+    <div class="stats-row" id="statsRow"></div>
+    <button class="big-btn" onclick="restartGame()">↺ JUGAR DE NUEVO</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CANVAS BACKGROUND — FLOATING CIRCLES
+// ═══════════════════════════════════════════
+const cv = document.getElementById('bgCanvas');
+const cx = cv.getContext('2d');
+const bubbles = [];
+function resizeCv(){ cv.width = innerWidth; cv.height = innerHeight; }
+resizeCv();
+window.addEventListener('resize', resizeCv);
+const COLORS = ['#a855f7','#38bdf8','#ff6fd8','#4ade80','#fbbf24'];
+for(let i=0;i<18;i++){
+  bubbles.push({
+    x: Math.random()*innerWidth, y: Math.random()*innerHeight,
+    r: 30+Math.random()*80, dx: (Math.random()-.5)*.4, dy: (Math.random()-.5)*.4,
+    color: COLORS[i%COLORS.length], a: .04+Math.random()*.06
+  });
+}
+function drawBg(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  // gradient bg
+  const g = cx.createRadialGradient(cv.width/2,cv.height/2,0,cv.width/2,cv.height/2,cv.width*.8);
+  g.addColorStop(0,'#1a1040'); g.addColorStop(1,'#0f0c29');
+  cx.fillStyle=g; cx.fillRect(0,0,cv.width,cv.height);
+  bubbles.forEach(b=>{
+    b.x+=b.dx; b.y+=b.dy;
+    if(b.x<-b.r)b.x=cv.width+b.r; if(b.x>cv.width+b.r)b.x=-b.r;
+    if(b.y<-b.r)b.y=cv.height+b.r; if(b.y>cv.height+b.r)b.y=-b.r;
+    cx.beginPath(); cx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    cx.fillStyle=b.color; cx.globalAlpha=b.a; cx.fill();
+    cx.globalAlpha=1;
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+const QUIZ = [
+  { q:"¿Cuál es el objetivo de la fase de PLANIFICACIÓN?",
+    opts:["Escribir el código","Definir alcance, recursos y cronograma","Instalar el sistema","Corregir bugs"],
+    ans:1, exp:"La planificación define el QUÉ, CUÁNTO y CUÁNDO del proyecto antes de comenzar a desarrollar." },
+  { q:"En el modelo en CASCADA, ¿cuál es su rasgo principal?",
+    opts:["Sprints de 2 semanas","Fases lineales sin retorno","Análisis de riesgos iterativo","Entrega incremental"],
+    ans:1, exp:"El modelo Cascada es estrictamente lineal: cada fase debe completarse antes de iniciar la siguiente." },
+  { q:"¿Qué fase define la ARQUITECTURA del sistema?",
+    opts:["Análisis","Diseño","Implementación","Pruebas"],
+    ans:1, exp:"La fase de Diseño define la arquitectura, componentes e interfaces del sistema." },
+  { q:"¿Cuál modelo combina diseño iterativo con ANÁLISIS DE RIESGOS?",
+    opts:["Cascada","V-Model","Espiral","Ágil"],
+    ans:2, exp:"El modelo Espiral de Boehm combina desarrollo iterativo con evaluación de riesgos en cada ciclo." },
+  { q:"En el V-Model, ¿qué característica lo define?",
+    opts:["No hay pruebas","Cada fase de desarrollo tiene su fase de prueba","Solo hay codificación","Las fases son aleatorias"],
+    ans:1, exp:"El V-Model empareja cada fase de desarrollo con una fase de prueba correspondiente, formando una V." },
+  { q:"¿Qué diferencia al modelo INCREMENTAL del Cascada?",
+    opts:["No tiene fases","Entrega el sistema en partes funcionales progresivas","Solo aplica a web","No requiere diseño"],
+    ans:1, exp:"El modelo Incremental construye y entrega el sistema en partes funcionales, permitiendo uso parcial temprano." },
+  { q:"La fase de MANTENIMIENTO ocurre:",
+    opts:["Antes del diseño","Entre análisis y código","Después del despliegue","Solo en Scrum"],
+    ans:2, exp:"El mantenimiento es la última fase: ocurre tras el despliegue para corregir errores y realizar mejoras." }
+];
+
+const PHASES = [
+  {text:"Planificación", icon:"📋", pos:0},
+  {text:"Análisis de Requisitos", icon:"🔍", pos:1},
+  {text:"Diseño", icon:"🎨", pos:2},
+  {text:"Implementación", icon:"💻", pos:3},
+  {text:"Pruebas", icon:"🧪", pos:4},
+  {text:"Despliegue", icon:"🚀", pos:5},
+  {text:"Mantenimiento", icon:"🔧", pos:6}
+];
+
+const MATCH_PAIRS = [
+  {fase:"Planificación", obj:"Definir alcance y cronograma"},
+  {fase:"Diseño", obj:"Crear la arquitectura del sistema"},
+  {fase:"Implementación", obj:"Escribir el código fuente"},
+  {fase:"Pruebas", obj:"Verificar que el software funcione"},
+  {fase:"Mantenimiento", obj:"Corregir errores post-entrega"}
+];
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let score=0, lives=3, combo=0, maxCombo=0;
+let qIdx=0, timerVal=100, timerInterval=null;
+let orderDone=false, matchErrors=0;
+let pairsFound=0, selectedCard=null;
+let totalPossible = QUIZ.length*150 + 300 + MATCH_PAIRS.length*100;
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function $(id){return document.getElementById(id);}
+function showScreen(id){
+  const ov=$('overlay');
+  ov.className='fade-in';
+  setTimeout(()=>{
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $(id).classList.add('active');
+    ov.className='fade-out';
+  },250);
+}
+
+function updateHUD(){
+  const hearts=['❤️','❤️','❤️','💔','💔','💔'];
+  let h=''; for(let i=0;i<3;i++) h+=(i<lives?'❤️':'🖤');
+  $('hudLives').textContent=h;
+  $('hudScore').textContent=score;
+  $('hudCombo').textContent='×'+(combo+1);
+  const pct = Math.round((score/totalPossible)*100);
+  $('hudProgress').style.width=Math.min(pct,100)+'%';
+}
+
+function showHUD(show){
+  $('hud').className=show?'show':'';
+  $('timerBar').className=show?'show':'';
+}
+
+function toast(msg, color='var(--green)', dur=1800){
+  const t=$('toast');
+  t.textContent=msg;
+  t.style.borderColor=color;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), dur);
+}
+
+function flash(color='rgba(74,222,128,.15)'){
+  const f=$('flash');
+  f.style.background=color;
+  f.style.opacity='1';
+  setTimeout(()=>f.style.opacity='0',200);
+}
+
+function spawnParticles(x,y,color,count=12){
+  for(let i=0;i<count;i++){
+    const p=document.createElement('div');
+    p.className='particle';
+    const angle=(Math.PI*2/count)*i;
+    const dist=60+Math.random()*80;
+    p.style.cssText=`
+      left:${x}px;top:${y}px;
+      width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;
+      background:${color};
+      --dx:${Math.cos(angle)*dist}px;
+      --dy:${Math.sin(angle)*dist}px;
+      --dur:${.6+Math.random()*.4}s;
+    `;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),1000);
+  }
+}
+
+function showComboPop(mult){
+  const cp=$('comboPop');
+  cp.textContent = mult>=4 ? '🔥 COMBO ×'+mult+'!' : mult>=3 ? '⚡ ×'+mult+' COMBO' : '✨ ×'+mult;
+  cp.className='show';
+  setTimeout(()=>cp.className='',900);
+}
+
+function loseLife(){
+  lives--;
+  flash('rgba(248,113,113,.25)');
+  combo=0; updateHUD();
+  // shake body
+  document.body.style.transform='translateX(8px)';
+  setTimeout(()=>document.body.style.transform='translateX(-8px)',80);
+  setTimeout(()=>document.body.style.transform='',160);
+  if(lives<=0) endGame(true);
+}
+
+function addScore(pts){
+  const mult = 1 + combo*0.5;
+  const total = Math.round(pts * mult);
+  score += total;
+  if(combo>maxCombo) maxCombo=combo;
+  combo++;
+  updateHUD();
+  return total;
+}
+
+// ═══════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════
+function startTimer(sec){
+  clearInterval(timerInterval);
+  timerVal=100;
+  const fill=$('timerFill');
+  fill.style.background='var(--green)';
+  const step=100/(sec*10);
+  timerInterval=setInterval(()=>{
+    timerVal-=step;
+    fill.style.width=Math.max(0,timerVal)+'%';
+    if(timerVal<40) fill.style.background='var(--yellow)';
+    if(timerVal<20) fill.style.background='var(--red)';
+    if(timerVal<=0){
+      clearInterval(timerInterval);
+      timerTimeout();
+    }
+  },100);
+}
+
+function timerTimeout(){
+  // mark as wrong and advance
+  document.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+  const q=QUIZ[qIdx];
+  document.querySelectorAll('.opt')[q.ans].classList.add('correct');
+  toast('⏱️ ¡Tiempo! La correcta era la '+['A','B','C','D'][q.ans],'var(--orange)');
+  loseLife();
+  setTimeout(()=>nextQ(), 1600);
+}
+
+// ═══════════════════════════════════════════
+//  QUIZ
+// ═══════════════════════════════════════════
+function buildQuiz(){
+  qIdx=0; renderQ();
+}
+
+function renderQ(){
+  const q=QUIZ[qIdx];
+  $('qNum').textContent=`Pregunta ${qIdx+1} de ${QUIZ.length}`;
+  $('qText').textContent=q.q;
+  const grid=$('optsGrid');
+  grid.innerHTML='';
+  const letters=['A','B','C','D'];
+  q.opts.forEach((o,i)=>{
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.innerHTML=`<span class="opt-letter">${letters[i]}</span>${o}`;
+    btn.onclick=(e)=>answerQ(i,e);
+    grid.appendChild(btn);
+  });
+  startTimer(15);
+}
+
+function answerQ(sel, e){
+  clearInterval(timerInterval);
+  const q=QUIZ[qIdx];
+  const btns=document.querySelectorAll('.opt');
+  btns.forEach(b=>b.disabled=true);
+
+  if(sel===q.ans){
+    btns[sel].classList.add('correct');
+    const pts=addScore(Math.round(timerVal)+50);
+    flash('rgba(74,222,128,.12)');
+    spawnParticles(e.clientX,e.clientY,'var(--green)');
+    if(combo>1) showComboPop(combo);
+    toast(`✅ +${pts} pts  ${q.exp}`,'var(--green)',2000);
+  } else {
+    btns[sel].classList.add('wrong');
+    btns[q.ans].classList.add('correct');
+    flash('rgba(248,113,113,.15)');
+    loseLife();
+    toast(`❌ ${q.exp}`,'var(--red)',2200);
+  }
+  setTimeout(()=>nextQ(), 2400);
+}
+
+function nextQ(){
+  qIdx++;
+  if(qIdx>=QUIZ.length){
+    clearInterval(timerInterval);
+    toast('🎉 ¡Ronda 1 completada!','var(--yellow)',1500);
+    setTimeout(()=>{ buildOrder(); showScreen('order'); },1600);
+  } else {
+    renderQ();
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ORDER DRAG & DROP
+// ═══════════════════════════════════════════
+function buildOrder(){
+  orderDone=false;
+  clearInterval(timerInterval);
+  $('timerFill').style.width='100%';
+  const list=$('phaseList');
+  list.innerHTML='';
+  const shuffled=[...PHASES].sort(()=>Math.random()-.5);
+  shuffled.forEach((p,i)=>{
+    const el=document.createElement('div');
+    el.className='phase-item';
+    el.draggable=true;
+    el.dataset.correct=p.pos;
+    el.innerHTML=`<div class="phase-num">${i+1}</div><span class="phase-icon">${p.icon}</span><span>${p.text}</span>`;
+    attachDrag(el);
+    list.appendChild(el);
+  });
+  addTouchDrag(list);
+}
+
+let dragEl=null;
+function attachDrag(el){
+  el.addEventListener('dragstart',()=>{ dragEl=el; el.classList.add('dragging-active'); });
+  el.addEventListener('dragend',()=>{ el.classList.remove('dragging-active'); dragEl=null; renum(); });
+  el.addEventListener('dragover',e=>{ e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+  el.addEventListener('drop',e=>{
+    e.preventDefault(); el.classList.remove('drag-over');
+    if(dragEl&&dragEl!==el){
+      const list=$('phaseList');
+      const items=[...list.children];
+      const a=items.indexOf(dragEl),b=items.indexOf(el);
+      if(a<b) list.insertBefore(dragEl,el.nextSibling);
+      else list.insertBefore(dragEl,el);
+      renum();
+    }
+  });
+}
+
+function addTouchDrag(list){
+  let tSrc=null,clone=null,startY=0;
+  [...list.children].forEach(el=>{
+    el.addEventListener('touchstart',e=>{
+      tSrc=el; startY=e.touches[0].clientY;
+      clone=el.cloneNode(true);
+      clone.style.cssText=`position:fixed;opacity:.75;pointer-events:none;z-index:800;
+        width:${el.offsetWidth}px;left:${el.getBoundingClientRect().left}px;
+        top:${e.touches[0].clientY-el.offsetHeight/2}px;
+        background:rgba(255,111,216,.18);border:2px solid var(--p1);border-radius:14px;`;
+      document.body.appendChild(clone);
+    },{passive:true});
+    el.addEventListener('touchmove',e=>{
+      if(!clone)return;
+      const t=e.touches[0];
+      clone.style.top=(t.clientY-40)+'px';
+      const under=document.elementFromPoint(t.clientX,t.clientY)?.closest('.phase-item');
+      document.querySelectorAll('.phase-item').forEach(i=>i.classList.remove('drag-over'));
+      if(under&&under!==tSrc) under.classList.add('drag-over');
+    },{passive:true});
+    el.addEventListener('touchend',e=>{
+      if(clone){clone.remove();clone=null;}
+      document.querySelectorAll('.phase-item').forEach(i=>i.classList.remove('drag-over'));
+      const t=e.changedTouches[0];
+      const under=document.elementFromPoint(t.clientX,t.clientY)?.closest('.phase-item');
+      if(under&&under!==tSrc){
+        const items=[...list.children];
+        const a=items.indexOf(tSrc),b=items.indexOf(under);
+        if(a<b) list.insertBefore(tSrc,under.nextSibling);
+        else list.insertBefore(tSrc,under);
+        renum();
+      }
+    },{passive:true});
+  });
+}
+
+function renum(){
+  [...$('phaseList').children].forEach((el,i)=>{
+    el.querySelector('.phase-num').textContent=i+1;
+    el.classList.remove('correct-order','wrong-order');
+  });
+}
+
+function checkOrder(){
+  if(orderDone) return;
+  const items=[...$('phaseList').children];
+  let correct=0;
+  items.forEach((el,i)=>{
+    el.classList.remove('correct-order','wrong-order');
+    if(parseInt(el.dataset.correct)===i){ el.classList.add('correct-order'); correct++; }
+    else el.classList.add('wrong-order');
+  });
+
+  if(correct===PHASES.length){
+    orderDone=true;
+    const pts=addScore(300);
+    flash('rgba(74,222,128,.15)');
+    spawnParticles(innerWidth/2,innerHeight/2,'var(--green)',20);
+    toast(`🏆 ¡PERFECTO! +${pts} pts`,'var(--green)',2000);
+    setTimeout(()=>{ buildMatch(); showScreen('match'); },2200);
+  } else {
+    loseLife();
+    toast(`${correct}/${PHASES.length} correctas. ¡Intenta de nuevo!`,'var(--orange)',2000);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  MATCHING
+// ═══════════════════════════════════════════
+function buildMatch(){
+  pairsFound=0; selectedCard=null; matchErrors=0;
+  $('matchPairs').textContent=`0 / ${MATCH_PAIRS.length} pares encontrados`;
+  const cols=$('matchCols');
+  cols.innerHTML='';
+
+  const lDiv=document.createElement('div');
+  lDiv.innerHTML=`<div class="match-col-label">FASES</div><div class="match-cards" id="mcLeft"></div>`;
+  const rDiv=document.createElement('div');
+  rDiv.innerHTML=`<div class="match-col-label">OBJETIVOS</div><div class="match-cards" id="mcRight"></div>`;
+  cols.appendChild(lDiv); cols.appendChild(rDiv);
+
+  const sF=[...MATCH_PAIRS].sort(()=>Math.random()-.5);
+  const sO=[...MATCH_PAIRS].sort(()=>Math.random()-.5);
+
+  sF.forEach(p=>{
+    const c=document.createElement('div');
+    c.className='mcard'; c.dataset.type='fase'; c.dataset.key=p.fase;
+    c.textContent=p.fase; c.onclick=()=>pickCard(c);
+    $('mcLeft').appendChild(c);
+  });
+  sO.forEach(p=>{
+    const c=document.createElement('div');
+    c.className='mcard'; c.dataset.type='obj'; c.dataset.key=p.fase;
+    c.textContent=p.obj; c.onclick=()=>pickCard(c);
+    $('mcRight').appendChild(c);
+  });
+}
+
+function pickCard(el){
+  if(el.classList.contains('matched')) return;
+  if(!selectedCard){
+    el.classList.add('selected'); selectedCard=el; return;
+  }
+  if(selectedCard===el){ el.classList.remove('selected'); selectedCard=null; return; }
+  if(selectedCard.dataset.type===el.dataset.type){
+    selectedCard.classList.remove('selected');
+    selectedCard=el; el.classList.add('selected'); return;
+  }
+  const a=selectedCard,b=el;
+  selectedCard=null;
+  if(a.dataset.key===b.dataset.key){
+    a.classList.remove('selected'); a.classList.add('matched'); b.classList.add('matched');
+    spawnParticles(b.getBoundingClientRect().left+40,b.getBoundingClientRect().top+30,'var(--p1)',10);
+    pairsFound++;
+    const pts=addScore(matchErrors===0?120:70);
+    toast(`✅ ¡Par encontrado! +${pts} pts`,'var(--p1)',1200);
+    $('matchPairs').textContent=`${pairsFound} / ${MATCH_PAIRS.length} pares encontrados`;
+    if(pairsFound===MATCH_PAIRS.length){
+      flash('rgba(168,85,247,.15)');
+      setTimeout(()=>endGame(false),1200);
+    }
+  } else {
+    matchErrors++;
+    [a,b].forEach(c=>{ c.classList.remove('selected'); c.classList.add('wrong-shake'); setTimeout(()=>c.classList.remove('wrong-shake'),400); });
+    flash('rgba(248,113,113,.12)');
+    loseLife();
+    toast('❌ No coinciden, intenta de nuevo','var(--red)',1200);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  START / END
+// ═══════════════════════════════════════════
+function startGame(){
+  score=0; lives=3; combo=0; maxCombo=0;
+  updateHUD(); showHUD(true);
+  buildQuiz();
+  showScreen('quiz');
+}
+
+function endGame(outOfLives){
+  clearInterval(timerInterval);
+  showHUD(false);
+  const pct=Math.round((score/totalPossible)*100);
+
+  let emoji,title,sub;
+  if(outOfLives){
+    emoji='💀'; title='GAME OVER';
+    sub=`Se te acabaron las vidas. Obtuviste ${score} puntos (${pct}%). ¡Sigue practicando!`;
+  } else if(pct>=85){
+    emoji='🏆'; title='¡MAESTRO DEL SDLC!';
+    sub=`¡Increíble! ${score} puntos (${pct}%) y combo máximo ×${maxCombo}. ¡Eres un experto!`;
+  } else if(pct>=60){
+    emoji='⭐'; title='¡BUEN TRABAJO!';
+    sub=`${score} puntos (${pct}%). Casi lo dominas, ¡vuelve a intentarlo!`;
+  } else {
+    emoji='📚'; title='SIGUE ESTUDIANDO';
+    sub=`${score} puntos (${pct}%). Repasa las fases del SDLC y vuelve.`;
+  }
+
+  $('resultEmoji').textContent=emoji;
+  $('resultTitle').textContent=title;
+  $('resultSub').textContent=sub;
+  $('statsRow').innerHTML=`
+    <div class="stat-box"><div class="stat-num" style="color:var(--yellow)">${score}</div><div class="stat-lbl">PUNTOS</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--p1)">${pct}%</div><div class="stat-lbl">PRECISIÓN</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--green)">×${maxCombo}</div><div class="stat-lbl">MAX COMBO</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--red)">${3-lives}</div><div class="stat-lbl">VIDAS PERDIDAS</div></div>
+  `;
+  if(pct>=85 && !outOfLives){
+    spawnParticles(innerWidth/2,innerHeight/2,'var(--yellow)',30);
+    setTimeout(()=>spawnParticles(innerWidth/3,innerHeight/2,'var(--p1)',20),300);
+    setTimeout(()=>spawnParticles(2*innerWidth/3,innerHeight/2,'var(--green)',20),600);
+  }
+  showScreen('results');
+}
+
+function restartGame(){
+  showScreen('splash');
+}
+</script>
+</body>
+</html>
